@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View, SafeAreaView } from 'react-native';
 import { deviceHeight, deviceWidth } from './app/common/dimensions';
 
+const INIT_ARRAY = Array(16).fill(null)
+
 export default function App() {
 
-  const [placements, setPlacements] = useState(Array(16).fill(null))
+  const [placements, setPlacements] = useState(INIT_ARRAY)
 
   const [first, setFirst] = useState(null)
   const [second, setSecond] = useState(null)
@@ -16,7 +18,7 @@ export default function App() {
 
   const [isGameWon, setIsGameWon] = useState(false)
 
-  const randomlySorted = (arr = placements.slice()) => {
+  const initialiseGameFn = (arr = INIT_ARRAY) => {
     let insertedIndices = [] // will keep track of the occupied indices
     let letters = ["A", "B", "C", "D", "E", "F", "G", "H"] // all the possible letters that are to be inserted
 
@@ -39,17 +41,20 @@ export default function App() {
         arr[randomIndex] = letter
       }
     })
-    return arr
+
+    setPlacements(arr)
+    setIsGameWon(false)
   }
 
-  const clearBoth = () => {
+  const clearBothFn = () => {
     setFirst(null)
     setSecond(null)
   }
 
   useEffect(() => {
-    setPlacements(randomlySorted())
+    initialiseGameFn()
   }, [])
+
 
   useEffect(() => {
     if (matchedIndices.length && (matchedIndices.length === placements.length)) setIsGameWon(true)
@@ -69,21 +74,24 @@ export default function App() {
           setMatchedIndices(_matchedIdx)
           // blacken the paired cards and make them unavailable for press somehow
         }
-        clearBoth()
+        clearBothFn()
       }, 500);
     }
   }, [second])
 
-  const showCard = (index) => {
+  const showCardFn = (index) => {
     let _selectionObj = {
       index,
       value: placements[index]
     }
     if (!first) setFirst(_selectionObj)
+    else if (first.index === index) return;
     else setSecond(_selectionObj)
   }
 
-  if (isGameWon) return <SafeAreaView style={styles.container}><Text style={{ fontWeight: "bold" }}>GAME WON!</Text></SafeAreaView>
+  if (isGameWon) return <SafeAreaView style={styles.container}><Text style={{ fontWeight: "bold" }}>GAME WON!</Text>
+    <Pressable onPress={() => initialiseGameFn()}><Text>Play Again</Text></Pressable>
+  </SafeAreaView>
 
   return (
     <SafeAreaView style={styles.container}>
@@ -97,8 +105,9 @@ export default function App() {
 
       <View style={styles.gridOutline}>
         <CardsContainer
+          openIndices={[first?.index, second?.index]}
           placements={placements}
-          showCard={showCard}
+          showCardFn={showCardFn}
           matchedCardIndices={matchedIndices}
         />
       </View>
@@ -110,31 +119,43 @@ export default function App() {
   );
 }
 
-const CardsContainer = ({ placements, showCard, matchedCardIndices }) => {
+const CardsContainer = ({ placements, showCardFn, matchedCardIndices, openIndices }) => {
+
+
   return (
     <>
-      {placements.map((el, index) => <Card key={index} index={index} showCard={showCard}
-        isMatched={matchedCardIndices.includes(index)}
-        char={el} />)}
+      {placements.map((el, index) =>
+        <Card
+          key={index}
+          index={index}
+
+          toShow={openIndices.includes(index)}
+
+          showCardFn={showCardFn}
+          isMatched={matchedCardIndices.includes(index)}
+          char={el}
+        />)}
     </>
   )
 }
 
 
-const Card = ({ char, showCard, index, isMatched }) => {
-
-  const [isPaired, setIsPaired] = useState(false)
-  const [visible, setVisible] = useState(false)
+const Card = ({ char, showCardFn, index, isMatched, toShow }) => {
 
   const cardPressHandler = () => {
     if (isMatched) return;
-    setVisible(true)
-    showCard(index)
+    showCardFn(index)
+  }
+
+  const textReturner = () => {
+    if (isMatched) return <Text style={{color: "lightgrey"}}>Already Matched!</Text>
+    else if (toShow) return <Text style={{ fontWeight: "bold" }}>{char}</Text>
+    else return <Text style={{ fontStyle: "italic" }}>(hidden)</Text>
   }
 
   return (
     <Pressable style={styles.card} onPress={cardPressHandler}>
-      {visible ? <Text style={{ fontWeight: "bold" }}>{isMatched ? "Already matched!" : char}</Text> : <Text>(hidden)</Text>}
+        {textReturner()}
     </Pressable>
   )
 }
