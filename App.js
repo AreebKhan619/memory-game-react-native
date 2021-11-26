@@ -3,6 +3,8 @@ import { Pressable, StyleSheet, Text, View, SafeAreaView } from 'react-native';
 import { deviceHeight, deviceWidth } from './app/common/dimensions';
 
 const INIT_ARRAY = Array(16).fill(null)
+const INIT_ATTEMPTS = 0
+const INIT_MATCHES = 0
 
 export default function App() {
 
@@ -11,8 +13,8 @@ export default function App() {
   const [first, setFirst] = useState(null)
   const [second, setSecond] = useState(null)
 
-  const [attempts, setAttempts] = useState(0)
-  const [matches, setMatches] = useState(0)
+  const [attempts, setAttempts] = useState(INIT_ATTEMPTS)
+  const [matches, setMatches] = useState(INIT_MATCHES)
 
   const [matchedIndices, setMatchedIndices] = useState([])
 
@@ -42,15 +44,28 @@ export default function App() {
       }
     })
 
-    setPlacements(arr)
-    setIsGameWon(false)
+
+    setPlacements(arr) // set the newly formed array with letters in random indices in the state
+    clearBothFn() // clear the selections
+    setAttempts(INIT_ATTEMPTS)
+    setMatches(INIT_MATCHES) // clear the counters
+    setMatchedIndices([])
+    setIsGameWon(false) // clear the game won status (for when the user starts the game again after winning)
   }
 
+
+  /**
+   * clears the `first` and `second` selection of cards
+   */
   const clearBothFn = () => {
     setFirst(null)
     setSecond(null)
   }
 
+
+  /**
+   * Code to run during the first commit phase
+   */
   useEffect(() => {
     initialiseGameFn()
   }, [])
@@ -61,6 +76,11 @@ export default function App() {
   }, [matchedIndices])
 
 
+  /**
+   * code for if the card opened is the second one. Will increment the matches and attempts counter.
+   * will also check whether or not the two cards match, subject to which their respective indices are stored in a state variable
+   * this will help in a card's rendering to decide whether to show "card already matched" or not
+   */
   useEffect(() => {
     if (second) {
       const doesMatch = (first.value === second.value)
@@ -72,13 +92,17 @@ export default function App() {
           let _matchedIdx = matchedIndices.slice()
           _matchedIdx.push(first.index, second.index)
           setMatchedIndices(_matchedIdx)
-          // blacken the paired cards and make them unavailable for press somehow
         }
         clearBothFn()
       }, 500);
     }
   }, [second])
 
+
+  /**
+   * When a hidden card is pressed, this function is used to show the card, and it checks whether it's the first card or the second card
+   * @param {Number} index - the index of the card in the array, ranges from 0 to a max of 15
+   */
   const showCardFn = (index) => {
     let _selectionObj = {
       index,
@@ -89,19 +113,19 @@ export default function App() {
     else setSecond(_selectionObj)
   }
 
+
   if (isGameWon) return <SafeAreaView style={styles.container}><Text style={{ fontWeight: "bold" }}>GAME WON!</Text>
     <Pressable onPress={() => initialiseGameFn()}><Text>Play Again</Text></Pressable>
   </SafeAreaView>
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" /> */}
+      <Text style={{ fontSize: 20, fontWeight: "bold", marginBottom: 10 }}>Memory Game</Text>
 
-      <Text>{deviceWidth} x {deviceHeight}</Text>
 
+      {/* <Text>{deviceWidth} x {deviceHeight}</Text> 
       <Text>First Card Opened: {first?.value}</Text>
-      <Text>Second Card Opened: {second?.value}</Text>
+      <Text>Second Card Opened: {second?.value}</Text> */}
 
       <View style={styles.gridOutline}>
         <CardsContainer
@@ -120,8 +144,6 @@ export default function App() {
 }
 
 const CardsContainer = ({ placements, showCardFn, matchedCardIndices, openIndices }) => {
-
-
   return (
     <>
       {placements.map((el, index) =>
@@ -142,24 +164,39 @@ const CardsContainer = ({ placements, showCardFn, matchedCardIndices, openIndice
 
 const Card = ({ char, showCardFn, index, isMatched, toShow }) => {
 
+
+  /**
+   * Function that runs first on Card-level. If the card is already matched, then nothing should be done, otherwise the parent component's function will handle it (check `showCardFn` above)
+   */
   const cardPressHandler = () => {
     if (isMatched) return;
     showCardFn(index)
   }
 
+
+  /**
+   * @returns <Text> component, the content and style of which varies as per the status of the card.
+   * If the card has already been matched, then it will show `Already Matched!`
+   * If the card is one of the two cards selected to check for a match, then the card will show the character it contains
+   * If neither of the above two conditions are met, it means that the card's character is hidden, and it has not been matched yet
+   */
   const textReturner = () => {
-    if (isMatched) return <Text style={{color: "lightgrey"}}>Already Matched!</Text>
+    if (isMatched) return <Text style={{ color: "lightgrey" }}>Already Matched!</Text>
     else if (toShow) return <Text style={{ fontWeight: "bold" }}>{char}</Text>
     else return <Text style={{ fontStyle: "italic" }}>(hidden)</Text>
   }
 
   return (
     <Pressable style={styles.card} onPress={cardPressHandler}>
-        {textReturner()}
+      {textReturner()}
     </Pressable>
   )
 }
 
+
+/**
+ * React Native Stylesheets for styling
+ */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
